@@ -1,0 +1,11 @@
+.DS_Store
+*.fastq
+*.sam
+*.bam
+*.bai
+*.vcf
+*.gz
+*.bed
+*.nextflow
+work/
+nextflow
