@@ -1,0 +1,14 @@
+// Example usage
+
+cut -f 1,2 ~/Desktop/orchid/data/hg19/reference_genome.fa.fai > chrom.sizes
+bedtools getfasta -name -fi /Volumes/diller/wittelab/data1/hg19/ucsc.hg19.fasta -bed mycroarray_submitted4_panel_only_680_window.bed -fo ms4_po.fasta
+
+time java -Xms128G -Xmx240G -XX:+UseSerialGC -XX:CICompilerCount=4 -jar mageri.jar \
+  -M3 nnNNNN:nnNNNN \
+  --references ms4_po.fasta \
+  --bed mycroarray_submitted4_panel_only_680_window.bed \
+  --project-name capture_test \
+  --sample-name S026 \
+  -R1 S026-R1.fastq.gz \
+  -R2 S026-R2.fastq.gz \
+  -O out/
