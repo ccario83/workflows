@@ -1,14 +1,5 @@
 #!/usr/bin/env nextflow
-// Prerequisite: Build the genome index like so:
-// /wittelab/software/hisat2-2.0.5/hisat2-build /wittelab/hg19/ucsc.hg19.fasta /wittelab/hg19/ucsc.hg19
-
-import groovy.io.FileType
-
-// Define the input channel of all read paired samples
-//Channel.fromFilePairs("${params.fastq_home}/*_R{1,2}*.fastq"){ file -> file.name.split('_')[0] }.println { id, files -> "Files with the sample ID $id are $files" }
 read_pairs = Channel.fromFilePairs("${params.fastq_home}/${params.read_glob}"){ file -> file.name.split('_')[0] }
-//println("Using read data matching glob: ${params.fastq_home}/*_R{1,2}*.fastq.gz")
-
 
 //************************
 //* Alignment
@@ -62,6 +53,7 @@ process MergeAligned {
     """
 }
 
+// Split samples into two channels for tumor and normal, and pair by patient
 normals = Channel.create()
 tumors  = Channel.create()
 paired  = Channel.create()
