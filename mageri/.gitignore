@@ -1,1 +1,5 @@
-out/
+*/*
+*.bed
+*.fasta
+*.output
+cfDNA_preset.xml
