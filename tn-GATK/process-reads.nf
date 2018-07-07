@@ -201,7 +201,7 @@ process Recal {
 //* Variant calling 
 //************************
 process CallVariants {
-  publishDir "${params.cleaned_dir}", mode: "copy", pattern: "${sample_id}-clean.bam *.vcf"
+  publishDir "${params.cleaned_dir}", mode: "copy", pattern: "${sample_id}*"
   clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=8"
   tag {"${sample_id}"}
 
@@ -209,7 +209,7 @@ process CallVariants {
   set sample_id, file(sample), file(bai), file(bqsr) from recald
 
   output:
-  set sample_id, file("${sample_id}-variants.vcf")
+  set sample_id, file("${sample_id}.vcf")
 
   """
   mkdir -p ${params.variant_dir}
@@ -240,7 +240,8 @@ process CallVariants {
      -R ${params.hg19_reference} \
      -I:tumor ${sample_id}-clean.bam \
      -I:normal ${normal_lookup[sample_id]}-clean.bam \
-     -o ${sample_id}-variants.vcf
+     -o ${sample_id}.tsv
+     -vcf ${sample_id}.vcf
   """
 }
 
