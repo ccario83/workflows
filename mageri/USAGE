@@ -1,20 +1,28 @@
-// Example usage
+# Example usage
 
-cut -f 1,2 ~/Desktop/orchid/data/hg19/reference_genome.fa.fai > hg19.genome
+# Make a genome file of chromosome sizes
+cut -f 1,2 /wittelab/data1/hg19/reference_genome.fa.fai > hg19.genome
 
+# Put some slop around the panel (corresponds to a cfDNA 175bp fragment on either size of the variant)
+cd refs
 bedtools slop -b 175 -i mycroarray_submitted4_panel_only.bed -g hg19.genome > ms4po_175.bed
-bedtools getfasta -name -fi /wittelab/data1/hg19/ucsc.hg19.fasta -bed ms4po_175.bed -fo ms4po_175.fasta
+# Generate a custom reference sequence file for this panel
+bedtools getfasta -fi /wittelab/data1/hg19/ucsc.hg19.fasta -bed ms4po_175.bed -fo ms4po_175.fasta
+cd ..
 
 qsub -I -l vmem=240G,mem=240G,nodes=1:ppn=4
 
 time java -Xms128G -Xmx200G -XX:+UseSerialGC -XX:CICompilerCount=4 -jar mageri.jar \
   -M3 nnNNNN:nnNNNN \
   --import-preset cfDNA_preset.xml \
-  --references ms4po_175.fasta \
-  --bed ms4po_175.bed \
-  --project-name test \
+  --references refs/ms4po_175.fasta \
+  --bed refs/ms4po_175.bed \
+  --project-name cfDNA \
   --sample-name S026 \
   -R1 /wittelab/data2/carioc/cfDNA-combined/panel/S026-cfDNA_R1.fastq.gz \
   -R2 /wittelab/data2/carioc/cfDNA-combined/panel/S026-cfDNA_R2.fastq.gz \
   -O S026/
 
+NOTES:
+  * The default_presets.xml parameters may work better in some cases. The nextflow script can also be used to run samples in parallel
+  * refs/ms4po_175_name.fasta can be used if contigs should be labeled by probe ID

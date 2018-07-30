@@ -1,5 +1,6 @@
 */*
 *.bed
 *.fasta
-*.output
-cfDNA_preset.xml
+.nextflow
+work
+S026
