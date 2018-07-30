@@ -20,6 +20,7 @@ read_pairs = Channel.fromFilePairs("${params.fastq_home}/${params.read_glob}"){ 
 //* Alignment
 //************************
 process Align {
+  storeDir "${params.alignment_dir}"
   tag {"${sample_id}: ${reads[0].getName()} & ${reads[1].getName()}"}
   clusterOptions "-l vmem=32gb,mem=32gb,nodes=1:ppn=4"
   
@@ -32,7 +33,6 @@ process Align {
   """
   mkdir -p ${params.alignment_dir}
   mkdir -p ${params.alignment_dir}/logs
-  export PERL5LIB
   export PU=`zcat < ${reads[0]} | head -n1 | awk 'BEGIN{FS=":"; OFS="."} /1/{print \$3,\$4,\$10}'`
   
   ${params.hisat2_home}/hisat2 \
@@ -47,7 +47,7 @@ process Align {
     --rg PL:ILLUMINA \
     --rg LB:${sample_id} \
     2> ${params.alignment_dir}/logs/${reads[1].getName()}.log \
-  | samtools view -Sb - | samtools sort -@ 4 -o ${sample_id}-sorted.bam
+  | samtools view -Sb - | samtools sort -@ 4 -o ${sample_id}-sorted.bams
   """
 }
 // Group files by their sample ids 
@@ -56,20 +56,21 @@ joint_bams = aligned_files.groupTuple()
 
 process MergeAligned {
   tag {"${sample_id}"}
+  storeDir "${params.alignment_dir}"
   clusterOptions "-l vmem=16gb,mem=16gb,nodes=1:ppn=4"
 
   input:
   set sample_id, bams from joint_bams
 
   output:
-  set sample_id, file("${sample_id}-merged.bam"), file("${sample_id}-merged.bai") into merged_aligned
+  set sample_id, file("${sample_id}-combined.bam"), file("${sample_id}-combined.bai") into merged_aligned
 
   """
   java -Xms4g -XX:ParallelGCThreads=4 -jar ${params.picard_home}/picard.jar MergeSamFiles \
     ASSUME_SORTED=true \
     CREATE_INDEX=true \
     INPUT=${bams.join(" INPUT=")} \
-    OUTPUT=${sample_id}-merged.bam \
+    OUTPUT=${sample_id}-combined.bam \
     USE_THREADING=true \
     VALIDATION_STRINGENCY=STRICT
   """
@@ -77,7 +78,7 @@ process MergeAligned {
 
 
 process MarkDuplicates {
-  publishDir "${params.alignment_dir}", mode: "copy"
+  storeDir "${params.alignment_dir}"
   tag {"${sample_id}"}
   clusterOptions "-l vmem=16gb,mem=16gb,nodes=1:ppn=4"
 
@@ -104,6 +105,7 @@ deduped_tumor = deduped.filter{it[0]-params.normal_regex}
 
 // Merge tumor/normal sample pairs from the same patient into a single bam
 process MergeSamples {
+  storeDir "${params.merged_dir}"
   tag {"${sample_id}"}
   clusterOptions "-l vmem=16gb,mem=16gb,nodes=1:ppn=4"
 
@@ -114,6 +116,7 @@ process MergeSamples {
   set sample_id, file("${sample_id}-merged.bam"), file("${sample_id}-merged.bai") into merged_samples
 
   """
+  mkdir -p ${params.merged_dir}
   java -Xms4g -XX:ParallelGCThreads=4 -jar ${params.picard_home}/picard.jar MergeSamFiles \
     ASSUME_SORTED=true \
     CREATE_INDEX=true \
@@ -136,7 +139,7 @@ process MergeSamples {
 
 // Realign indels
 process Indels {
-  publishDir "${params.cleaned_dir}", mode: "copy", pattern: "*.intervals"
+  storeDir "${params.cleaned_dir}"
   tag {"${sample_id}"}
   clusterOptions "-l vmem=48gb,mem=48gb,nodes=1:ppn=4"
 
@@ -171,7 +174,7 @@ process Indels {
 
 // Recalibrate base quality scores 
 process Recal {
-  publishDir "${params.cleaned_dir}", mode: "copy", pattern: "*.grp"
+  storeDir "${params.cleaned_dir}"
   tag {"${sample_id}"}
   clusterOptions "-l vmem=16gb,mem=16gb,nodes=1:ppn=8"
 
@@ -196,12 +199,8 @@ process Recal {
   """
 }
 
-
-//************************
-//* Variant calling 
-//************************
-process CallVariants {
-  publishDir "${params.cleaned_dir}", mode: "copy", pattern: "${sample_id}*"
+process Clean {
+  storeDir "${params.cleaned_dir}"
   clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=8"
   tag {"${sample_id}"}
 
@@ -209,10 +208,10 @@ process CallVariants {
   set sample_id, file(sample), file(bai), file(bqsr) from recald
 
   output:
-  set sample_id, file("${sample_id}.vcf")
+  set sample_id, file("${normal_lookup[sample_id]}-clean.bam"), file("${normal_lookup[sample_id]}-clean.bai"), file("${sample_id}-clean.bam"), file("${sample_id}-clean.bai") into cleaned
 
   """
-  mkdir -p ${params.variant_dir}
+  mkdir -p ${params.cleaned_dir}
 
   # Make a normal bam with recalibrated bases
   java -Xms4g -XX:ParallelGCThreads=4 -jar ${params.gatk_home}/GenomeAnalysisTK.jar \
@@ -233,14 +232,36 @@ process CallVariants {
     -sn ${sample_id} \
     -nct 8 \
     -o ${sample_id}-clean.bam
+  """
+}
+
+
+
+//************************
+//* Variant calling 
+//************************
+process CallVariants {
+  publishDir "${params.variant_dir}", mode: "copy", pattern: "${sample_id}*"
+  clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=8"
+  tag {"${sample_id}"}
+
+  input:
+  set sample_id, file("normal"), file("normal.bai"), file("tumor"), file("tumor.bai") from cleaned
+
+  output:
+  set sample_id, file("${sample_id}.tsv"), file("${sample_id}.vcf")
+
+  """
+  mkdir -p ${params.variant_dir}
 
   # Call variants 
   /opt/java/jdk1.7.0_latest/bin/java -Xms4g -XX:ParallelGCThreads=4 -jar params.mutect_home/mutect-1.1.7.jar \
      -T MuTect \
      -R ${params.hg19_reference} \
-     -I:tumor ${sample_id}-clean.bam \
-     -I:normal ${normal_lookup[sample_id]}-clean.bam \
-     -o ${sample_id}.tsv
+     -I:tumor tumor \
+     -I:normal normal \
+     -nct 8 \
+     -o ${sample_id}.tsv \
      -vcf ${sample_id}.vcf
   """
 }

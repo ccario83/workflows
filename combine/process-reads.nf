@@ -2,8 +2,8 @@
 import groovy.io.FileType
 
 
-lane_pairs = Channel.fromFilePairs("${params.fastq_home}/${params.read_glob}", size: -1){ file -> file.name.split('_')[0] + "_" + file.name.split('_')[3]}
-println("Using read data matching glob: ${params.fastq_home}/${params.read_glob}")
+lane_pairs = Channel.fromFilePairs("${params.fastq_home}/${params.lane_glob}", size: -1){ file -> file.name.split('_')[0] + "_" + file.name.split('_')[3]}
+println("Using read data matching glob: ${params.fastq_home}/${params.lane_glob}")
 
 /************************
  * Alignment 
