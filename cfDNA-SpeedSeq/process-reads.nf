@@ -46,7 +46,7 @@ process ProcessUMIs {
   connor \
     -f ${params.consensus_freq_threshold}\
     -s ${params.min_family_size_threshold}\
-    -d {params.umt_distance_threshold}\
+    -d ${params.umt_distance_threshold}\
     --force \
     ${sample} \
     ${sample_id}-collapsed.bam 
@@ -55,12 +55,12 @@ process ProcessUMIs {
 
 
 //************************
-//* Variant calling 
+//* Variant calling with Freebayes or VarDict
 //************************
 process Call {
-  tag {"${sample_id}"}
-  clusterOptions "-l vmem=256gb,mem=256gb"
-  publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf.gz"
+  tag {"${sample_id} w/ ${params.variant_caller}"}
+  clusterOptions "-l vmem=64gb,mem=64gb"
+  publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf*"
   
 
   input:
@@ -69,16 +69,39 @@ process Call {
   output:
   set sample_id, file("${sample_id}.vcf")
 
-  """
-  mkdir -p ${params.variant_dir}
-  
-  freebayes-1.0\
-    -f ${params.hg19_reference}\
-    -F ${params.min_alternate_fraction}\
-    -C ${params.min_alternate_count}\
-    ${sample} > ${sample_id}.vcf
-  """
+  script:
+  if (params.variant_caller == 'freebayes')
+    """
+    mkdir -p ${params.variant_dir}
+    
+    ${params.freebayes_home}/freebayes \
+      -f ${params.hg19_reference}\
+      --min-alternate-fraction ${params.min_alternate_fraction}\
+      --min-alternate-count ${params.min_alternate_count}\
+      ${sample} > ${sample_id}.vcf
+    #cat ${sample_id}.vcf | ${params.vcffilter_home}/vcffilter -f "${params.variant_filter}" > ${sample_id}-filtered.vcf
+    """
+  else if (params.variant_caller == 'vardict')
+    """
+    mkdir -p ${params.variant_dir}
+    
+    ${params.vardict_home}/VarDict \
+      -G ${params.hg19_reference}\
+      -f ${params.min_alternate_fraction}\
+      -N ${sample_id}\
+      -b ${sample}\
+      -z 0\
+      -c 1\
+      -S 2\
+      -E 3\
+      -g 4\
+      ${params.panel}\
+      | ${params.vardict_script_home}/teststrandbias.R \
+      | ${params.vardict_script_home}/var2vcf_valid.pl -N ${sample_id} -E -f ${params.min_alternate_fraction} \
+      > ${sample_id}.vcf
+    """
 }
+
 
 
 /*

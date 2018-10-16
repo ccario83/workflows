@@ -55,40 +55,32 @@ process SpeedMerge {
     """
 }
 
-normals = Channel.create()
-tumors  = Channel.create()
-paired  = Channel.create()
-
-merged_aligned.choice( normals, tumors ) { a -> a =~ params.normal_regex ? 0 : 1 }
-normals.cross(tumors){ a -> a[0].split("-")[0] }.into(paired)
-
 
 //************************
 //* Variant calling 
 //************************
 process SpeedCall {
   publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf.gz"
-  tag {"${tumor[0]}"}
+  tag {"${sample_id}"}
   clusterOptions "-l vmem=100gb,mem=100gb,nodes=1:ppn=32"
 
   input:
-  set normal, tumor from paired
+  set sample_id, file("${sample_id}_merged.bam"), file("${sample_id}_merged.bam.bai") from merged_aligned
 
   output:
-  file("${tumor[0]}.vcf.gz")
+  file("${sample_id}.vcf.gz")
 
   """
   mkdir -p ${params.variant_dir}
   export LD_LIBRARY_PATH="/opt/gcc/gcc-4.8.1/lib64/"
   
-  $SPEEDSEQ somatic \
-    -o ${tumor[0]} \
+  $SPEEDSEQ var \
+    -o ${sample_id} \
     -F 0.05 \
     -q 1 \
     -t 30 \
     ${params.hg19_reference} \
-    ${normal[1]} \
-    ${tumor[1]}
+    ${sample_id}_merged.bam
   """
 }
 

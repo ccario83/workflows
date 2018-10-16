@@ -1,0 +1,6 @@
+*/*
+*.bed
+*.fasta
+.nextflow
+work
+panels
