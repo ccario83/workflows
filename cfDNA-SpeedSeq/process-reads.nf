@@ -59,21 +59,12 @@ process ProcessUMIs {
 
 
 //************************
-<<<<<<< HEAD
 //* Variant calling with Freebayes or VarDict
 //************************
 process Call {
   tag {"${sample_id} w/ ${params.variant_caller}"}
   clusterOptions "-l vmem=64gb,mem=64gb"
   publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf*"
-=======
-//* Variant calling 
-//************************
-process Call {
-  tag {"${sample_id}"}
-  clusterOptions "-l vmem=256gb,mem=256gb"
-  publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf.gz"
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
   
 
   input:
@@ -82,7 +73,6 @@ process Call {
   output:
   set sample_id, file("${sample_id}.vcf")
 
-<<<<<<< HEAD
   script:
   if (params.variant_caller == 'freebayes')
     """
@@ -117,21 +107,6 @@ process Call {
 }
 
 
-
-=======
-  """
-  mkdir -p ${params.variant_dir}
-  
-  freebayes-1.0\
-    -f ${params.hg19_reference}\
-    -F ${params.min_alternate_fraction}\
-    -C ${params.min_alternate_count}\
-    ${sample} > ${sample_id}.vcf
-  """
-}
-
-
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
 /*
 // NOTE: Does not support --min_alternate_fraction and --min_alternate_count arguments
 //************************

@@ -242,19 +242,11 @@ process Clean {
 //************************
 process CallVariants {
   publishDir "${params.variant_dir}", mode: "copy", pattern: "${sample_id}*"
-<<<<<<< HEAD
   clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=2"
   tag {"${sample_id}"}
 
   input:
   set sample_id, file("normal.bam"), file("normal.bai"), file("tumor.bam"), file("tumor.bai") from cleaned
-=======
-  clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=8"
-  tag {"${sample_id}"}
-
-  input:
-  set sample_id, file("normal"), file("normal.bai"), file("tumor"), file("tumor.bai") from cleaned
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
 
   output:
   set sample_id, file("${sample_id}.tsv"), file("${sample_id}.vcf")
@@ -263,20 +255,11 @@ process CallVariants {
   mkdir -p ${params.variant_dir}
 
   # Call variants 
-<<<<<<< HEAD
   /opt/java/jdk1.7.0_latest/bin/java -Xms4g -XX:ParallelGCThreads=4 -jar ${params.mutect_home}/mutect-1.1.7.jar \
      -T MuTect \
      -R ${params.hg19_reference} \
      -I:tumor tumor.bam \
      -I:normal normal.bam \
-=======
-  /opt/java/jdk1.7.0_latest/bin/java -Xms4g -XX:ParallelGCThreads=4 -jar params.mutect_home/mutect-1.1.7.jar \
-     -T MuTect \
-     -R ${params.hg19_reference} \
-     -I:tumor tumor \
-     -I:normal normal \
-     -nct 8 \
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
      -o ${sample_id}.tsv \
      -vcf ${sample_id}.vcf
   """

@@ -69,11 +69,8 @@ normals.cross(tumors){ a -> a[0].split("-")[0] }.into(paired)
 process SpeedCall {
   publishDir "${params.variant_dir}", mode: "copy", pattern: "*.vcf.gz"
   tag {"${tumor[0]}"}
-<<<<<<< HEAD
   clusterOptions "-l vmem=100gb,mem=100gb,nodes=1:ppn=32"
-=======
-  clusterOptions "-l vmem=64gb,mem=64gb,nodes=1:ppn=32"
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
+
 
   input:
   set normal, tumor from paired
@@ -91,13 +88,8 @@ process SpeedCall {
     -q 1 \
     -t 30 \
     ${params.hg19_reference} \
-<<<<<<< HEAD
     ${normal[1]} \
     ${tumor[1]}
-=======
-    ${tumor[1]} \
-    ${normal[1]} \
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
   """
 }
 
