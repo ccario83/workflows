@@ -46,11 +46,7 @@ process ProcessUMIs {
   connor \
     -f ${params.consensus_freq_threshold}\
     -s ${params.min_family_size_threshold}\
-<<<<<<< HEAD
     -d ${params.umt_distance_threshold}\
-=======
-    -d {params.umt_distance_threshold}\
->>>>>>> 05fbfb22bc07e6bbd9ecfefd151e4100c73c952d
     --force \
     ${sample} \
     ${sample_id}-collapsed.bam 
